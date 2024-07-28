@@ -8,7 +8,7 @@ const vec3 = require('vec3')
 const bot = mineflayer.createBot({
     host: 'localhost',          //Server Ip
     port: 5555,                //Port
-    username: 'LitematicaBot',      //Username
+    username: 'LitematicaBot',      //Username OR Email if using a account
     //password: ''              //Password (Needed if logining into a actual account))
     version: '1.20'           //Minecraft Version
 })
