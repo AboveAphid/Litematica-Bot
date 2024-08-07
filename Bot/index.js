@@ -249,8 +249,8 @@ async function placeLitematica(filename, pos, increative=true) {
 
 
                     bot.chat(`/give @s ${blockType}`)
-                    bot.equipItem(removePrefix(blockType, 'minecraft:'), 'hand')
-                    moveToCoords(increative, dx, dy, dz)
+                    await bot.equipItem(removePrefix(blockType, 'minecraft:'), 'hand')
+                    await moveToCoords(increative, dx, dy, dz)
                     await bot.placeBlock(block, determineFaceVector3(vec3(x, y, z))).catch((error) => {
                         // console.log('Failed to place block :(') // Sometimes logs it when it does place it sooooo
                         // bot.chat('Failed to place block :(')
