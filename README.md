@@ -25,3 +25,6 @@
 - I switched accounts so this is a fork into my new account
 - The bot will require OP to run the commands like /setblock, etc
 - Currently anyone will be able to use the chat commands so that could lead to issues if multiple structures are being placed at once..
+
+## EXTRA CREDITS
+- Thanks to Johnson also known as "y3621555" on github for the updated / more survival friendly pathfinding algorithm!

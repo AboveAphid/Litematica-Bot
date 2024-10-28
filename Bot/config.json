@@ -1,0 +1,9 @@
+{
+    "server_ip": "localhost",
+    "server_version": "1.20.1",
+    "server_port": 5555,
+    "username": "LitematicaBot",
+    "password": null,
+    "use_better_pathfinder": true,
+    "re_enable_sendCommandFeedback": true
+}

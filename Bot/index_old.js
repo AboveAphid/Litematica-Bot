@@ -1,60 +1,50 @@
-// Load libraries
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder') //Imports Only certain parts of mineflayer-pathfinding //npm install mineflayer-pathfinder
 const GoalNear = goals.GoalNear
 const GoalBlock = goals.GoalBlock
 const vec3 = require('vec3')
-const mcData = require('minecraft-data')(bot.version)
-
-// Load custom files
-const { astar_pathfinder } = require('./better_pathfinder.js')
-const config = require("./config.json")
 
 
-// Make bot
 const bot = mineflayer.createBot({
-    host: config.server_ip,          //Server Ip
-    port: config.server_port,                //Port
-    username: config.username,      //Username OR Email if using a account
-    password: config.password,              //Password (Needed if logining into a actual account))
-    version: config.server_version           //Minecraft Version
+    host: 'localhost',          //Server Ip
+    port: 5555,                //Port
+    username: 'LitematicaBot',      //Username OR Email if using a account
+    //password: ''              //Password (Needed if logining into a actual account))
+    version: '1.20'           //Minecraft Version
 })
-var use_better_pathfinder = config.use_better_pathfinder
-const re_enable_sendCommandFeedback = config.re_enable_sendCommandFeedback
+
 
 bot.loadPlugin(pathfinder)
 
+const mcData = require('minecraft-data')(bot.version)
 
-// Error handling for bot
+// const movements = new Movements(bot, mcData)
+// bot.pathfinder.setMovements(movements)
+
 bot.on('kick', console.log)
 bot.on('error', console.log)
-
-// Login and spawning
 bot.on('login', () => {
     console.log('Logged on to server')
 })
 bot.on('spawn', () => {
     console.log('Spawned')
     bot.equipItem = equipItem // Allows me to access the custom equipItem func from the bot
-
-    bot.chat(`Hello!`)
-    bot.chat(`To get a list of commands type "!help"`)
-    bot.chat(`Created by: A_Aphid: https://www.youtube.com/channel/UC93w5xusCW-VQzpgS1CUM7Q`)
-    bot.chat(`Thank you for using this software :)`)
-
-    // Test pathfinder
-    // astar_pathfinder.astarfly(bot, vec3(90, 150, 150,))
 })
 
 bot.on('chat', doStuff)
 
-let buildingActive = false;
-let reachedDestination = false; 
-let delay = 1
 
-//-------------------------------------------------------------//
+
+let BuildingActive = false;
+let reachedDestination = false; 
+let Delay = 1
+
 
 async function doStuff(username, msg) {
+    bot.chat(`Hello!
+To get a list of commands type "!help"
+Created by: A_Aphid: https://www.youtube.com/channel/UC93w5xusCW-VQzpgS1CUM7Q
+Thank you for using this software :)`)
 
     const player = bot.players[username]
 
@@ -71,7 +61,7 @@ async function doStuff(username, msg) {
     switch (tokens[0])
     {
         case '!commands':
-            if (buildingActive)
+            if (BuildingActive)
             {
                 bot.chat('Currently building! Type "!stop" to cancel other building (or wait till completed) first.')
                 return
@@ -89,7 +79,7 @@ async function doStuff(username, msg) {
 
         case '!place':
             bot.chat('Warning! This can be VERY SLOW. I recommend canceling this with !stop and instead using !commands')
-            if (buildingActive)
+            if (BuildingActive)
             {
                 bot.chat('Currently building! Type "!stop" to cancel other building (or wait till completed) first.')
                 return
@@ -115,7 +105,7 @@ async function doStuff(username, msg) {
                     pos = [player.entity.position.x, player.entity.position.y, player.entity.position.z]
                     bot.chat(`${pos}`)
                 } catch (error) {
-                    bot.chat("[ERROR] Player undefined or out of distance. Using bot's position.")
+                    bot.chat("ERROR: Player undefined or out of distance. Using bot's position.")
                     pos = [bot.entity.position.x.toFixed(0), bot.entity.position.y.toFixed(0), bot.entity.position.z.toFixed(0)]
                 }
             }
@@ -124,29 +114,21 @@ async function doStuff(username, msg) {
             break
 
         case '!stop':
-            buildingActive = false
+            BuildingActive = false
             bot.chat('Stopping...')
             break
 
         case '!QUIT':
-            buildingActive = false
+            BuildingActive = false
             bot.chat('Goodbye!')
             bot.quit()
             break
         
         case '!delay':
-            bot.chat(`Delay: ${delay}`)
+            bot.chat(`Delay: ${Delay}`)
             break
 
-        case '!switchpathfinder':
-            use_better_pathfinder = !use_better_pathfinder
-            if (use_better_pathfinder) {
-                bot.chat("Now using ASTAR pathfinder")
-            } else {
-                bot.chat("Now using DEFAULT MINEFLAYER pathfinder")
-            }
-            console.log(`Better pathfinder now being used? ${use_better_pathfinder}`)
-            break
+        
 
         case '!setdelay':
             if (tokens.length < 2)
@@ -156,8 +138,8 @@ async function doStuff(username, msg) {
             }
             try
             {
-                delay = parseFloat(tokens[1])
-                bot.chat(`Set delay to: ${delay}`)
+                Delay = parseFloat(tokens[1])
+                bot.chat(`Set delay to: ${Delay}`)
             }
             catch (error)
             {
@@ -167,37 +149,32 @@ async function doStuff(username, msg) {
             break
 
         case '!active':
-            bot.chat(`Currently Building: ${buildingActive}`)
-            break
+            bot.chat(`Currently Building: ${BuildingActive}`)
 
-        case '!pathfinder':
-            if (use_better_pathfinder) {
-                bot.chat("Using ASTAR pathfinder")
-            } else {
-                bot.chat("Using DEFAULT MINEFLAYER pathfinder")
-            }
+            break
 
         case '!help':
             bot.chat(`
 NAME      - ARGS                      - DESCRIPTION
 !commands   [FILENAME]                  This builds the specified file
-!place    [FILENAME]  [POS]  [CREATIVE] Places the blocks instead of using commands (Also allows you to specify position)
-!switchpathfinder                       Switches better ASTAR pathfinder and DEFAULT MINEFLAYER pathfinder. (ASTAR is better for survival mode)
+NOT RECOMMENDED: !place    [FILENAME]  [POS]  [CREATIVE] Places the blocks instead of using commands (Also allows you to specify position)
 !stop                                   Stops the current process of building
 !QUIT                                   The bot exits the game
 !delay                                  Shows the current delay per block placed (ms). Default 1ms/block
 !setdelay   [DELAY]                     Sets a new delay for building (ms)
 !active                                 Shows if the bot is activally build currently
-!pathfinder                             Shows which pathfinder the bot is currently using
 !help                                   Brings up this text
 `)
     }
 }
 
 //-------------------------------------------------------------//
+//-------------------------------------------------------------//
+//-------------------------------------------------------------//
+
 
 async function placeLitematica(filename, pos, increative=true) {
-    buildingActive = true
+    BuildingActive = true
 
     var data = loadFile('data', filename);
 
@@ -212,10 +189,11 @@ async function placeLitematica(filename, pos, increative=true) {
 
         if (data.hasOwnProperty(key)) {
             mass = data[key]
+            // mass = data
             for (var rowkey in mass)
             {
                 reachedDestination = true
-                if (!buildingActive)
+                if (!BuildingActive)
                 {
                     bot.chat('Canceled!')
                     return;
@@ -255,40 +233,36 @@ async function placeLitematica(filename, pos, increative=true) {
                     var replace = block.name != removePrefix(blockType, 'minecraft:');
                     console.log(`Will replace: ${replace}`)
 
-                    var skip_this_block = false
-                    if (replace) {
-                        if (block && block.displayName != 'Air' && block.diggable)
-                        {
-                            await bot.dig(bot.blockAt(vec3(x, y, z)))
-                        } else {
-                            // Block unable to be removed
-                            skip_this_block = true
-                        }
-                    };
 
-                    // We skip as there is a block in the way and we are unable to remove it :(
-                    if (skip_this_block) {
+
+                    if (!replace) {
                         continue
-                    }
+                    };
                 
+                    if (block && block.displayName != 'Air' && block.diggable)
+                    {
+                        await bot.dig(bot.blockAt(vec3(x, y, z)))
+                    }
+
                     
-                    // Get block
+                    
+
+
                     bot.chat(`/give @s ${blockType}`)
-                    // Equip block in mainhand for use
                     await bot.equipItem(removePrefix(blockType, 'minecraft:'), 'hand')
-                    // Move to area
                     await moveToCoords(increative, dx, dy, dz)
-                    // Place block
                     await bot.placeBlock(block, determineFaceVector3(vec3(x, y, z))).catch((error) => {
-                        console.log(`Failed to place block :( | Error ${error}`) // Sometimes logs it when it does place it sooooo
+                        // console.log('Failed to place block :(') // Sometimes logs it when it does place it sooooo
                         // bot.chat('Failed to place block :(')
                     })
 
                     
-                    // Calculate time taken and show some verbose
+                    
+                    
+                    
+                    
                     var d = new Date();
-                    var et = d.getSeconds() - st // NOTE: May need to change how the seconds are recieved, maybe use milliseconds instead?
-
+                    var et = d.getSeconds() - st
                     // bot.chat(`Took ${et} seconds to complete.`)
                     console.log(`Took ${et} seconds to complete.`)
 
@@ -301,7 +275,10 @@ async function placeLitematica(filename, pos, increative=true) {
                     bot.chat(logString)
                     console.log(logString)
 
+
                     console.log(`------------------------------------\n`)
+
+                    
                 }
             }
         }
@@ -311,54 +288,52 @@ async function placeLitematica(filename, pos, increative=true) {
     bot.chat("Completed build: " + filename + '!');
 
     console.log("Completed build: " + filename + '!');
-    buildingActive = false
+    BuildingActive = false
 
+    // Safety block
+    
     if (increative) {
         bot.creative.stopFlying()
     }
 }
 
-//-------------------------------------------------------------//
 
 async function moveToCoords(increative, x, y, z) {
     reachedDestination = true
-
-    if (use_better_pathfinder) {
-        try {
-            await astar_pathfinder.astarfly(bot, vec3(x, y, z))
-        } catch (error) {
-            reachedDestination = false;
-        }
+    if (increative && !(bot.entity.position.y == y && bot.entity.onGround)) {
+        // bot.chat('Flying to destination')
+        bot.creative.flyTo(vec3(x, y, z)).catch(() => {
+            // bot.chat('Failed to reach achieve goal. (Fly)')
+            reachedDestination = false
+        })
     } else {
-        // Fly to position
-        if (increative && !(bot.entity.position.y == y && bot.entity.onGround)) {
-            bot.creative.flyTo(vec3(x, y, z)).catch(() => {
-                // bot.chat('Failed to reach achieve goal. (Fly)')
-                reachedDestination = false
-            })
-        } else {
-            // Walk/Run to position
-            bot.pathfinder.setGoal(new GoalNear(x, y, z, 1))
-            await bot.pathfinder.goto(new GoalBlock(x, y, z)).catch(() => {
-                // bot.chat('Failed to reach achieve goal. (Walk)');
-                reachedDestination = false;
-            })
-        }
+        //                                 POS    Allowed offset
+        // bot.chat('Walking to destination')
+        bot.pathfinder.setGoal(new GoalNear(x, y, z, 1))
+        await bot.pathfinder.goto(new GoalBlock(x, y, z)).catch(() => {
+            // bot.chat('Failed to reach achieve goal. (Walk)');
+            reachedDestination = false;
+        })
     }
 
-    console.log(`Did the bot reach the destination? Answer: ${reachedDestination}`)
+    // bot.chat(`Reached destination: ${reachedDestination}`)
 
     return reachedDestination
 }
 
+
+
+//-------------------------------------------------------------//
+//-------------------------------------------------------------//
 //-------------------------------------------------------------//
 
 async function commandsLitematica(filename) {
-    buildingActive = true;
+    BuildingActive = true;
 
     var data = loadFile('data', filename);
     
-    bot.chat("/gamerule sendCommandFeedback false"); // To stop chat spam
+
+    bot.chat("/gamerule sendCommandFeedback false");
 
     for (var key in data) {
         if (data.hasOwnProperty(key)) {
@@ -366,49 +341,52 @@ async function commandsLitematica(filename) {
             
             for (var rowkey in mass)
             {
-                if (!buildingActive)
+                if (!BuildingActive)
                 {
                     bot.chat('Canceled!')
                     return;
                 }
                 if (mass.hasOwnProperty(rowkey)) {
                     row = mass[rowkey]
-                    command = datapointToSetblockCommand(row)
+                    command = datapointToCommand(row)
                     // console.log(rowkey, ':', row);
 
                     bot.chat(command);
-                    await new Promise(r => setTimeout(r, delay));
+                    await new Promise(r => setTimeout(r, Delay));
                 }
             }
         }
     }
-    if (re_enable_sendCommandFeedback) {
-        bot.chat("/gamerule sendCommandFeedback true"); // As we are no longer spamming chat
-    }
+    bot.chat("/gamerule sendCommandFeedback true");
     bot.chat("Completed build: " + filename + '!');
+
     console.log("Completed build: " + filename + '!');
-    buildingActive = false
+    BuildingActive = false
+
 }
 
-function datapointToSetblockCommand(datapoint)
+function datapointToCommand(datapoint)
 {
     var command = `/setblock ~${datapoint[0][0]} ~${datapoint[0][1]} ~${datapoint[0][2]} ${datapoint[1]}`
     return command
 }
 
+
 //-------------------------------------------------------------//
-//                   USEFUL CUSTOM FUNCTIONS                   //
+//-------------------------------------------------------------//
 //-------------------------------------------------------------//
 
 function loadFile(filepath='data', filename='test') {
     try {
-        return require(`./${filepath}/${filename}.json`);;
+        var data = require(`./${filepath}/${filename}.json`);
+        return data;
     } catch (error) {
         bot.chat('Unknown file!');
         // console.log(error);
         return;
     }
 }
+
 
 function removePrefix(string, prefix)
 {
@@ -432,7 +410,7 @@ function convertSecondsToTime (seconds) {
     return `${hours} hours, ${minutes} minutes, and ${seconds} seconds left`
 }
 
-// Determine which side of the face should be used to place blocks on
+
 function determineFaceVector3(blockPos) {
 
     var dx = blockPos.x
@@ -464,9 +442,11 @@ function determineFaceVector3(blockPos) {
         return vec3(0,0,1)
     }
 
-    console.log('[WARNING] NO OPEN FACES')
+    console.log('ERROR: NO OPEN FACES')
     return vec3(0,1,0) // Sometimes the bot will glitch and be able to place anyways
 }
+
+
 
 // Inventory Managment: https://github.com/PrismarineJS/mineflayer/blob/fe549f88476f3739c7952d91ec7fa603d9513414/examples/inventory.js#L99
 function equipItem (name, destination) {
@@ -475,16 +455,14 @@ function equipItem (name, destination) {
         bot.equip(item, destination, () => {console.log})
     } else 
     {
-        console.log(`[ERROR] I have no ${name} to equip`)
+        console.log(`ERROR: I have no ${name} to equip`)
     }
 }
 
-// Get item by name
 function itemByName (name) {
     return bot.inventory.items().filter(item => item.name === name)[0]
 }
 
-// Get length of a json(?) - Its been a while seen I've seen my code ok??
 function getLengthOfData(data) {
     flatternedData = [].concat(...Object.values(data));
     return flatternedData.length
