@@ -4,7 +4,6 @@ const { pathfinder, Movements, goals } = require('mineflayer-pathfinder') //Impo
 const GoalNear = goals.GoalNear
 const GoalBlock = goals.GoalBlock
 const vec3 = require('vec3')
-const mcData = require('minecraft-data')(bot.version)
 
 // Load custom files
 const { astar_pathfinder } = require('./better_pathfinder.js')
@@ -19,8 +18,11 @@ const bot = mineflayer.createBot({
     password: config.password,              //Password (Needed if logining into a actual account))
     version: config.server_version           //Minecraft Version
 })
+// const mcData = require('minecraft-data')(bot.version)
 var use_better_pathfinder = config.use_better_pathfinder
 const re_enable_sendCommandFeedback = config.re_enable_sendCommandFeedback
+var use_supply_chest = config.supply_chest_active
+var supply_chest_pos = config.supply_chest_coords
 
 bot.loadPlugin(pathfinder)
 
@@ -46,7 +48,7 @@ bot.on('spawn', () => {
     // astar_pathfinder.astarfly(bot, vec3(90, 150, 150,))
 })
 
-bot.on('chat', doStuff)
+bot.on('chat', onChat)
 
 let buildingActive = false;
 let reachedDestination = false; 
@@ -54,7 +56,7 @@ let delay = 1
 
 //-------------------------------------------------------------//
 
-async function doStuff(username, msg) {
+async function onChat(username, msg) {
 
     const player = bot.players[username]
 
@@ -62,7 +64,7 @@ async function doStuff(username, msg) {
         return
     }
 
-    if (player.username === bot.username) { // If username is the bot then returns
+    if (player.username === bot.username || username === bot.username) { // If username is the bot then returns
         return
     }
 
@@ -196,18 +198,24 @@ NAME      - ARGS                      - DESCRIPTION
 
 //-------------------------------------------------------------//
 
-async function placeLitematica(filename, pos, increative=true) {
+async function placeLitematica(filename, pos) {
     buildingActive = true
 
     var data = loadFile('data', filename);
 
+    var increative = getGamemodeOfBot() == 1
     if (increative) {
         bot.creative.startFlying()
     }
 
     var numOfBlocks = getLengthOfData(data)
     var currentBlockNum = 1;
-        
+    
+    if (use_supply_chest) {
+        await retrieveSupplies_fromSupplyChest()
+        bot.waitForTicks(20)
+    }
+
     for (var key in data) {
 
         if (data.hasOwnProperty(key)) {
@@ -240,47 +248,57 @@ async function placeLitematica(filename, pos, increative=true) {
                     console.log(`Block: ${x} ${y} ${z}: ${blockType}`)
                     console.log(`Desired location: ${dx} ${dy} ${dz}`)
 
-                    var block = bot.blockAt(vec3(x, y, z));
+                    var current_block_there = bot.blockAt(vec3(x, y, z));
 
                     currentBlockNum += 1
                     
-
-
-                    if (!block) {
-                        bot.chat('Skipped')
-                        continue
-                    };
-                    
-                    console.log(`Current block there: ${block.name}`)
-                    var replace = block.name != removePrefix(blockType, 'minecraft:');
+                    console.log(`Current block there: ${current_block_there.name}`)
+                    var replace = current_block_there.name != removePrefix(blockType, 'minecraft:');
                     console.log(`Will replace: ${replace}`)
 
-                    var skip_this_block = false
                     if (replace) {
-                        if (block && block.displayName != 'Air' && block.diggable)
+                        if (current_block_there && current_block_there.displayName != 'Air' && current_block_there.diggable)
                         {
                             await bot.dig(bot.blockAt(vec3(x, y, z)))
-                        } else {
-                            // Block unable to be removed
-                            skip_this_block = true
                         }
                     };
 
-                    // We skip as there is a block in the way and we are unable to remove it :(
-                    if (skip_this_block) {
-                        continue
-                    }
-                
+                    // Check if we are using the supply chest instead
                     
-                    // Get block
-                    bot.chat(`/give @s ${blockType}`)
+                    var required_item_in_inventory = itemInInventory(blockNameToItemVar(blockType))
+                    while (!required_item_in_inventory) {
+                        if (!use_supply_chest && !required_item_in_inventory) {
+                            // Item not in inventory and we aren't using supply chest so we just use /give (hopefully we have permission :/)
+                                bot.chat(`/give @s ${blockType}`)
+                        } else {
+                            // Supply chest is active
+                            if (!required_item_in_inventory) {
+                                // No items in inventory so we have to go back to the supply chest and get more
+                                await retrieveSupplies_fromSupplyChest()
+                            }
+                        required_item_in_inventory = itemInInventory(blockNameToItemVar(blockType))
+                        if (!required_item_in_inventory) {
+                            bot.chat(`Please restock supply chest! I need: ${blockType}, and possibly other items.`)
+                            console.log(`Please restock supply chest! I need: ${blockType}, and possibly other items.`)
+                        }
+                        await bot.waitForTicks(20)
+                        await bot.waitForChunksToLoad();
+                    }
+                    }
+                    
+
                     // Equip block in mainhand for use
                     await bot.equipItem(removePrefix(blockType, 'minecraft:'), 'hand')
                     // Move to area
-                    await moveToCoords(increative, dx, dy, dz)
+                    await moveToCoords(dx, dy, dz)
                     // Place block
-                    await bot.placeBlock(block, determineFaceVector3(vec3(x, y, z))).catch((error) => {
-                        console.log(`Failed to place block :( | Error ${error}`) // Sometimes logs it when it does place it sooooo
+                    var face_vector = await determineFaceVector3(vec3(x, y, z));
+                    await bot.placeBlock(current_block_there, face_vector).catch(error => {
+                        // Don't worry if the error has "Event blockUpdate... ...did not fire within timeout of..." because that is a common bug that we can "ignore". https://github.com/PrismarineJS/mineflayer/issues/2757
+                        if (error.message.includes(" did not fire within timeout of ")) {
+                            return;
+                        }
+                        console.log(`Failed to place block :( | ${error}`) // Sometimes logs it when it does place it sooooo (I figured out why!!! The above comment says.)
                         // bot.chat('Failed to place block :(')
                     })
 
@@ -320,8 +338,9 @@ async function placeLitematica(filename, pos, increative=true) {
 
 //-------------------------------------------------------------//
 
-async function moveToCoords(increative, x, y, z) {
+async function moveToCoords(x, y, z) {
     reachedDestination = true
+    var increative = getGamemodeOfBot() == 1
 
     if (use_better_pathfinder) {
         try {
@@ -485,7 +504,58 @@ function itemByName (name) {
 }
 
 // Get length of a json(?) - Its been a while seen I've seen my code ok??
+/**
+ * @param {*} data A dictionary / json variable 
+ * @returns The length of the dict
+ */
 function getLengthOfData(data) {
     flatternedData = [].concat(...Object.values(data));
     return flatternedData.length
+}
+
+/**
+ * 0 - Survival
+ * 1 - Creative
+ * 2 - Adventure
+ * 3 - Spectator
+ * @returns ID of Gamemode
+ */
+function getGamemodeOfBot() {
+    return bot.player.gamemode
+}
+
+function itemInInventory(item) {
+    let inv_item = bot.inventory.findInventoryItem(item.id);
+    if (!inv_item) {
+        return false;
+    }
+    return true;
+}
+
+function blockNameToItemVar(blockname) {
+    blockname = removePrefix(blockname, 'minecraft:')
+    console.log("Block to convert:", blockname)
+    var item = bot.registry.itemsByName[blockname]
+    console.log("Item version:", item)
+    return item
+} 
+
+async function retrieveSupplies_fromSupplyChest() {
+    console.log("Gathering supplies from supply chest...")
+    var supply_chest_blockpos = vec3(supply_chest_pos.x, supply_chest_pos.y, supply_chest_pos.z)
+    
+    await moveToCoords(supply_chest_blockpos.x, supply_chest_blockpos.y, supply_chest_blockpos.z)
+    var container = bot.blockAt(supply_chest_blockpos)
+
+    var chest = await bot.openContainer(container)
+    var items = chest.containerItems()
+    for (let i = 0; i < items.length; i++) {
+        var item = items[i]
+        if (!item) { continue }
+        // console.log(`Withdrawing item: ${item.name} | Count: ${item.count} | Metadata: ${item.metadata}`)
+        await chest.withdraw(item.type, item.metadata, item.count)
+        console.log(`Withdrawn item: ${item.name}, there were ${item.count} of them.`)
+    }
+    chest.close()
+    console.log("Gathered supplies!")
 }

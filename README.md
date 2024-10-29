@@ -22,9 +22,10 @@
 4. Now watch as it appears in front of your eyes 😲
 
 ## NOTES
-- I switched accounts so this is a fork into my new account
-- The bot will require OP to run the commands like /setblock, etc
-- Currently anyone will be able to use the chat commands so that could lead to issues if multiple structures are being placed at once..
+- I switched accounts so this is a fork into my new account. The old account has outdated code btw / lacks some new features.
+- Check the ./config file in the Bot folder for more configuration options of the bot.
+- The bot will require OP to run the commands like /setblock, etc* Unless you use supply chest mode (check config.json in ./Bot)
+- Currently anyone will be able to use the chat commands so that could lead to issues if multiple structures are being placed at once.. Please don't try and build two things at once!
 
 ## EXTRA CREDITS
 - Thanks to Johnson also known as "y3621555" on github for the updated / more survival friendly pathfinding algorithm!
